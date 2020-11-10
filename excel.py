@@ -43,8 +43,8 @@ def get_starting_message(rows):
 	return message
 
 
-def parse_document():
-	document = load_workbook(filename='sample.xlsx')
+def parse_document(filename):
+	document = load_workbook(filename=filename)
 	table = document.active
 	menu = {}
 
