@@ -5,6 +5,7 @@ from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 
 BACK_BTN = "Назад"
+CONTACT_BTN = "Указать контакты"
 
 
 class ParseError(Exception):
@@ -17,7 +18,12 @@ class Button():
 	def __init__(self, row, text, btn_id, back=None):
 		self.row = row
 		self.text = text
-		self.id = btn_id if text != BACK_BTN else 'back'
+		if text == BACK_BTN:
+			self.id = 'back'
+		elif text == CONTACT_BTN:
+			self.id = 'contact'
+		else:
+			self.id = btn_id
 		self.back = back
 
 	@staticmethod

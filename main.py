@@ -4,9 +4,10 @@ import sys
 import os
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler
 from excel import parse_document, ParseError
+from contact import contact_form
 
 
-FILENAME = 'sample.xlsx'
+FILENAME = 'sample2.xlsx'
 
 
 def main():
@@ -40,6 +41,7 @@ def main():
 		answer(update, context, int(update.callback_query.data))
 
 	updater.dispatcher.add_handler(CommandHandler('start', start))
+	updater.dispatcher.add_handler(contact_form)
 	updater.dispatcher.add_handler(CallbackQueryHandler(back, pattern=r'^back$'))
 	updater.dispatcher.add_handler(CallbackQueryHandler(next_menu))
 
