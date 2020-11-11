@@ -1,6 +1,7 @@
 """Parse dialogue tree from Excel file."""
 
 from openpyxl import load_workbook
+from openpyxl.utils.exceptions import InvalidFileException
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 
 
@@ -28,8 +29,8 @@ class Button():
 
 	@staticmethod
 	def from_cell(cell, back=None):
-		text = cell.value.lstrip('0123456789')
-		if not text.startswith(')'):
+		text = str(cell.value).lstrip('0123456789')
+		if not text or not text.startswith(')'):
 			return None
 		text = text.removeprefix(')').strip()
 		return Button(cell.row, text, hash(text), back)
@@ -38,21 +39,17 @@ class Button():
 		return [InlineKeyboardButton(self.text, callback_data=self.id)]
 
 
-def get_starting_message(rows):
-	message = None
-	while not message:
-		for cell in next(rows):
-			if cell.value:
-				if message:
-					raise ParseError()
-				message = cell.value
-	return message
-
-
 def parse_document(filename):
-	document = load_workbook(filename=filename)
+	try:
+		document = load_workbook(filename=filename)
+	except InvalidFileException as err:
+		raise ParseError("Невалидный файл.") from err
+
 	table = document.active
-	menu = {}
+	try:
+		menu = {'start': table[2][0].value}
+	except IndexError as err:
+		raise ParseError("Пустой файл.") from err
 
 	def build_menu(button, col, row):
 		submenu = menu.setdefault(button.id, {'back': button.back})
@@ -65,7 +62,7 @@ def parse_document(filename):
 				elif 'message' not in submenu:
 					submenu['message'] = cell.value
 				else:
-					raise ParseError(cell.coordinate)
+					raise ParseError("Ошибка в ячейке " + cell.coordinate)
 
 		if next_buttons and col != table.max_column:
 			for i in range(len(next_buttons) - 1):
@@ -77,7 +74,6 @@ def parse_document(filename):
 				[button.to_telegram() for button in next_buttons])
 		submenu.setdefault('message', button.text)
 
-	start_button = Button(5, get_starting_message(table.rows), 'main')
-	build_menu(start_button, table.min_column, table.max_row)
+	build_menu(Button(3, None, 'main'), table.min_column, table.max_row)
 	document.close()
 	return menu
