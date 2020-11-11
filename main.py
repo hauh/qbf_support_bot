@@ -2,9 +2,12 @@
 
 import sys
 import os
+import logging
+
 from telegram import TelegramError
 from telegram.ext import (
 	Updater, Filters, CommandHandler, MessageHandler, CallbackQueryHandler)
+
 from excel import parse_document, ParseError
 from contact import contact_form
 
@@ -50,28 +53,49 @@ def clean(update, _context):
 
 
 def error(update, context):
+	user = update.effective_user.username or update.effective_user.id
+	logging.warning("Ошибка у пользователя '%s' - %s", user, context.error)
 	answer(update, context, 'main')
 
 
 def main():
-	updater = None
-	menu = None
+	logging.basicConfig(
+		level=logging.INFO,
+		format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+		handlers=[
+			logging.FileHandler('bot.log', 'a', 'utf-8'),
+			logging.StreamHandler()
+		],
+		force=True
+	)
 
 	try:
-		updater = Updater(os.environ['TOKEN'])
+		token = os.environ['TOKEN']
 	except KeyError:
-		print("Токен бота не указан в переменных окружения!")
-	except TelegramError as err:
-		print(f"Ошибка подключения к телеграму: {err.args}")
+		logging.critical("Токен бота ('TOKEN') не найден в переменных окружения!")
+		sys.exit(1)
+
+	try:
+		admin = os.environ['ADMIN']
+	except KeyError:
+		logging.critical("Ник админа ('ADMIN') не найден в переменных окружения!")
+		sys.exit(1)
 
 	try:
 		menu = parse_document(FILENAME)
 	except ParseError as err:
-		print(f"Ошибка парсинга файла {err.args}")
+		logging.critical("Ошибка парсинга файла - %s", err)
+		sys.exit(1)
 
-	if not updater or not menu:
-		sys.exit(-1)
+	try:
+		updater = Updater(token)
+	except TelegramError as err:
+		logging.critical("Ошибка подключения к телеграму - %s", err)
+		sys.exit(1)
 
+	logging.info("Бот запущен!")
+
+	updater.dispatcher.bot_data['admin'] = admin
 	updater.dispatcher.bot_data['menu'] = menu
 
 	updater.dispatcher.add_handler(CommandHandler('start', start))
@@ -84,6 +108,8 @@ def main():
 
 	updater.start_polling()
 	updater.idle()
+
+	logging.info("Бот выключен.")
 
 
 if __name__ == "__main__":

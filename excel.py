@@ -42,6 +42,8 @@ class Button():
 def parse_document(filename):
 	try:
 		document = load_workbook(filename=filename)
+	except FileNotFoundError as err:
+		raise ParseError("Файл не найден.") from err
 	except InvalidFileException as err:
 		raise ParseError("Невалидный файл.") from err
 

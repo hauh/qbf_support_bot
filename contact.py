@@ -1,7 +1,7 @@
 """Contact customer form."""
 
-
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+import logging
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, TelegramError
 from telegram.ext import (
 	Filters, ConversationHandler, MessageHandler, CallbackQueryHandler)
 
@@ -9,14 +9,14 @@ from telegram.ext import (
 form = {
 	'name': "Как к вам обращаться?",
 	'phone': "Введите контакный номер телефона.",
-	'time': "Укажите удобное время для звонка.",
-	'confirm': "{name}\n{phone}\n{time}\n\nПодвердить?",
-	'success': "Заявка зарегистрирована."
+	'confirm': "{name}\n{phone}\n\nПодвердить?",
+	'success': "Заявка зарегистрирована.",
+	'fail': "Ошибка регистрации заявки. Пожалуйста, свяжитесь с нами."
 }
 notification = (
 	"Заявка на обратный звонок от "
 	"[{username}](tg://user?id={user_id}):\n"
-	"{name}\n{phone}\n{time}"
+	"{name}\n{phone}\n"
 )
 
 back_btn = [InlineKeyboardButton("Назад", callback_data='back')]
@@ -27,7 +27,7 @@ confirm = InlineKeyboardMarkup([confirm_btn, back_btn])
 
 def form_action(callback):
 	def next_action(update, context):
-		if last_message := context.user_data.get('last_message'):
+		if last_message := context.user_data.pop('last_message', None):
 			last_message.delete()
 		next_step, text, buttons = callback(update, context)
 		msg = update.effective_chat.send_message(text=text, reply_markup=buttons)
@@ -48,25 +48,28 @@ def ask_phone(update, context):
 
 
 @form_action
-def ask_time(update, context):
-	context.user_data['phone'] = update.effective_message.text
-	return 3, form['time'], back
-
-
-@form_action
 def ask_confirm(update, context):
-	context.user_data['time'] = update.effective_message.text
-	return 4, form['confirm'].format(**context.user_data), confirm
+	context.user_data['phone'] = update.effective_message.text
+	return 3, form['confirm'].format(**context.user_data), confirm
 
 
 def done(update, context):
-	update.callback_query.answer(form['success'], show_alert=True)
-	text = notification.format(
-		username=update.effective_user.username or update.effective_user.id,
-		user_id=update.effective_user.id,
-		**context.user_data
-	)
-	update.effective_chat.send_message(text, parse_mode='Markdown')
+	try:
+		context.bot.send_message(
+			chat_id=context.bot_data['admin'],
+			text=notification.format(
+				username=update.effective_user.username or update.effective_user.id,
+				user_id=update.effective_user.id,
+				name=context.user_data['name'],
+				phone=context.user_data['phone'],
+			),
+			parse_mode='Markdown'
+		)
+	except TelegramError as err:
+		logging.error("Ошибка пересылки заявки - %s", err)
+		update.callback_query.answer(form['fail'], show_alert=True)
+	else:
+		update.callback_query.answer(form['success'], show_alert=True)
 	return end(update, context)
 
 
@@ -80,9 +83,8 @@ contact_form = ConversationHandler(
 	entry_points=[CallbackQueryHandler(ask_name, pattern=r'^contact$')],
 	states={
 		1: [MessageHandler(Filters.text, ask_phone)],
-		2: [MessageHandler(Filters.text, ask_time)],
-		3: [MessageHandler(Filters.text, ask_confirm)],
-		4: [CallbackQueryHandler(done, pattern=r'^confirm$')],
+		2: [MessageHandler(Filters.text, ask_confirm)],
+		3: [CallbackQueryHandler(done, pattern=r'^confirm$')],
 	},
 	fallbacks=[CallbackQueryHandler(end, pattern=r'^back$')],
 	allow_reentry=True,
