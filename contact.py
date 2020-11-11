@@ -25,28 +25,38 @@ back = InlineKeyboardMarkup([back_btn])
 confirm = InlineKeyboardMarkup([confirm_btn, back_btn])
 
 
-def ask_name(update, _context):
-	update.effective_chat.send_message(text=form['name'], reply_markup=back)
-	return 1
+def form_action(callback):
+	def next_action(update, context):
+		if last_message := context.user_data.get('last_message'):
+			last_message.delete()
+		next_step, text, buttons = callback(update, context)
+		msg = update.effective_chat.send_message(text=text, reply_markup=buttons)
+		context.user_data['last_message'] = msg
+		return next_step
+	return next_action
 
 
+@form_action
+def ask_name(_update, _context):
+	return 1, form['name'], back
+
+
+@form_action
 def ask_phone(update, context):
 	context.user_data['name'] = update.effective_message.text
-	update.effective_chat.send_message(text=form['phone'], reply_markup=back)
-	return 2
+	return 2, form['phone'], back
 
 
+@form_action
 def ask_time(update, context):
 	context.user_data['phone'] = update.effective_message.text
-	update.effective_chat.send_message(text=form['time'], reply_markup=back)
-	return 3
+	return 3, form['time'], back
 
 
+@form_action
 def ask_confirm(update, context):
 	context.user_data['time'] = update.effective_message.text
-	text = form['confirm'].format(**context.user_data)
-	update.effective_chat.send_message(text=text, reply_markup=confirm)
-	return 4
+	return 4, form['confirm'].format(**context.user_data), confirm
 
 
 def done(update, context):
@@ -57,7 +67,13 @@ def done(update, context):
 		**context.user_data
 	)
 	update.effective_chat.send_message(text, parse_mode='Markdown')
-	return -1
+	return end(update, context)
+
+
+@form_action
+def end(_update, context):
+	return_menu = context.bot_data['menu']['main']
+	return -1, return_menu['message'], return_menu['buttons']
 
 
 contact_form = ConversationHandler(
@@ -68,6 +84,6 @@ contact_form = ConversationHandler(
 		3: [MessageHandler(Filters.text, ask_confirm)],
 		4: [CallbackQueryHandler(done, pattern=r'^confirm$')],
 	},
-	fallbacks=[CallbackQueryHandler(lambda *_: -1, pattern=r'^back$')],
+	fallbacks=[CallbackQueryHandler(end, pattern=r'^back$')],
 	allow_reentry=True,
 )
