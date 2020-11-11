@@ -20,15 +20,17 @@ def answer(update, context, menu_id):
 	next_menu = context.bot_data['menu'].get(menu_id)
 	if update.callback_query:
 		update.callback_query.answer()
-	if last_message := context.user_data.pop('last_message', None):
-		last_message.edit_text(next_menu['message'])
-		last_message.edit_reply_markup(reply_markup=next_menu['buttons'])
+	if message := context.user_data.pop('last_message', None):
+		message.edit_text(
+			text=next_menu['message'],
+			reply_markup=next_menu['buttons']
+		)
 	else:
 		message = update.effective_chat.send_message(
 			text=next_menu['message'],
 			reply_markup=next_menu['buttons']
 		)
-		context.user_data['last_message'] = message
+	context.user_data['last_message'] = message
 
 
 def start(update, context):
