@@ -16,20 +16,19 @@ FILENAME = 'menu.xlsx'
 
 
 def answer(update, context, menu_id):
-	context.user_data['current_menu'] = menu_id
-	next_menu = context.bot_data['menu'].get(menu_id)
 	if update.callback_query:
 		update.callback_query.answer()
+	context.user_data['current_menu'] = menu_id
+	next_menu = context.bot_data['menu'].get(menu_id)
+	message_kwargs = {
+		'text': next_menu['message'],
+		'reply_markup': next_menu['buttons'],
+		'parse_mode': 'Markdown'
+	}
 	if message := context.user_data.pop('last_message', None):
-		message.edit_text(
-			text=next_menu['message'],
-			reply_markup=next_menu['buttons']
-		)
+		message.edit_text(**message_kwargs)
 	else:
-		message = update.effective_chat.send_message(
-			text=next_menu['message'],
-			reply_markup=next_menu['buttons']
-		)
+		message = update.effective_chat.send_message(**message_kwargs)
 	context.user_data['last_message'] = message
 
 
