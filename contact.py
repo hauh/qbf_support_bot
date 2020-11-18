@@ -1,16 +1,26 @@
 """Contact customer form."""
 
 import logging
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, TelegramError
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.error import TelegramError
 from telegram.ext import (
 	Filters, ConversationHandler, MessageHandler, CallbackQueryHandler)
 
 
 form = {
-	'name': "Как к вам обращаться?",
-	'phone': "Введите контакный номер телефона.",
-	'confirm': "{name}\n{phone}\n\nПодвердить?",
-	'success': "Заявка зарегистрирована.",
+	'name': (
+		"Напишите, пожалуйста, как к Вам обращаться "
+		"(в строке соообщения) и нажмите кнопку \"Отправить\"."
+	),
+	'phone': (
+		"Введите, пожалуйста, Ваш контакный номер телефона "
+		"(в строке соообщения) и нажмите кнопку \"Отправить\"."
+	),
+	'confirm': "{name}\n{phone}\n\nПодтвердить?",
+	'success': (
+		"Спасибо! Ваша заявка принята, специалист департамента "
+		"клиентского обслуживания свяжется с Вами в ближайшее время."
+	),
 	'fail': "Ошибка регистрации заявки. Пожалуйста, свяжитесь с нами."
 }
 notification = (
@@ -20,13 +30,15 @@ notification = (
 )
 
 back_btn = [InlineKeyboardButton("Назад", callback_data='back')]
-confirm_btn = [InlineKeyboardButton("Подвердить", callback_data='confirm')]
+confirm_btn = [InlineKeyboardButton("Подтвердить", callback_data='confirm')]
 back = InlineKeyboardMarkup([back_btn])
 confirm = InlineKeyboardMarkup([confirm_btn, back_btn])
 
 
 def form_action(callback):
 	def next_action(update, context):
+		if update.callback_query:
+			update.callback_query.answer()
 		if last_message := context.user_data.pop('last_message', None):
 			last_message.delete()
 		next_step, text, buttons = callback(update, context)
