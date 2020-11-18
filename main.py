@@ -4,9 +4,11 @@ import sys
 import os
 import logging
 
-from telegram import TelegramError
+from telegram import Bot
+from telegram.error import TelegramError, BadRequest
 from telegram.ext import (
 	Updater, Filters, CommandHandler, MessageHandler, CallbackQueryHandler)
+from telegram.utils.request import Request
 
 from excel import parse_document, ParseError
 from contact import contact_form
@@ -15,21 +17,49 @@ from contact import contact_form
 FILENAME = 'menu.xlsx'
 
 
+class SafeRequestsBot(Bot):
+	"""Ignores failed requests."""
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs, request=Request(con_pool_size=10))
+
+	@staticmethod
+	def safe_request(method, *args, **kwargs):
+		try:
+			return method(*args, **kwargs)
+		except BadRequest as err:
+			logging.warning("Bot error - %s", err)
+			return False
+
+	def answer_callback_query(self, *args, **kwargs):
+		return self.safe_request(super().answer_callback_query, *args, **kwargs)
+
+	def delete_message(self, *args, **kwargs):
+		return self.safe_request(super().delete_message, *args, **kwargs)
+
+	def edit_message_text(self, *args, **kwargs):
+		return self.safe_request(super().edit_message_text, *args, **kwargs)
+
+
 def answer(update, context, menu_id):
-	if update.callback_query:
-		update.callback_query.answer()
-	context.user_data['current_menu'] = menu_id
-	next_menu = context.bot_data['menu'].get(menu_id)
-	message_kwargs = {
-		'text': next_menu['message'],
-		'reply_markup': next_menu['buttons'],
-		'parse_mode': 'Markdown'
-	}
-	if message := context.user_data.pop('last_message', None):
-		message.edit_text(**message_kwargs)
+	if next_menu := context.bot_data['menu'].get(menu_id):
+		if update.callback_query:
+			update.callback_query.answer()
+		context.user_data['current_menu'] = menu_id
+		message_kwargs = {
+			'text': next_menu['message'],
+			'reply_markup': next_menu['buttons'],
+			'parse_mode': 'Markdown'
+		}
+		if message := context.user_data.pop('last_message', None):
+			message.edit_text(**message_kwargs)
+		else:
+			message = update.effective_chat.send_message(**message_kwargs)
+		context.user_data['last_message'] = message
 	else:
-		message = update.effective_chat.send_message(**message_kwargs)
-	context.user_data['last_message'] = message
+		if update.callback_query and update.callback_query.message:
+			update.callback_query.message.delete()
+		answer(update, context, 'main')
 
 
 def start(update, context):
@@ -89,7 +119,7 @@ def main():
 		sys.exit(1)
 
 	try:
-		updater = Updater(token)
+		updater = Updater(bot=SafeRequestsBot(token))
 	except TelegramError as err:
 		logging.critical("Ошибка подключения к телеграму - %s", err)
 		sys.exit(1)
