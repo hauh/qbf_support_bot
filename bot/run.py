@@ -78,9 +78,12 @@ def clean(update, _context):
 
 
 def error(update, context):
-	user = update.effective_user.username or update.effective_user.id
-	logging.warning("Ошибка у пользователя '%s' - %s", user, context.error)
-	answer(update, context, 'main')
+	if not update or not update.effective_user:
+		logging.error("Ошибка - %s", context.error)
+	else:
+		user = update.effective_user.username or update.effective_user.id
+		logging.warning("Сбой у пользователя '%s' - %s", user, context.error)
+		answer(update, context, 'main')
 
 
 def run(token, admin, menu):
