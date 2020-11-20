@@ -1,8 +1,7 @@
-FROM python:3.9
+FROM python:slim
 WORKDIR /opt/qbf_support_bot
-COPY requirements.txt menu.xlsx ./
-RUN apt-get update && apt-get upgrade -y && \
-	pip install -r requirements.txt
-EXPOSE 7002
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 COPY bot ./bot
+COPY menu.xlsx .
 CMD ["python", "-m", "bot"]
