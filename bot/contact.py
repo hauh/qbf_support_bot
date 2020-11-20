@@ -1,10 +1,11 @@
 """Contact customer form."""
 
 import logging
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 from telegram.ext import (
-	Filters, ConversationHandler, MessageHandler, CallbackQueryHandler)
+	CallbackQueryHandler, ConversationHandler, Filters, MessageHandler)
 
 
 form = {

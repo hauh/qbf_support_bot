@@ -1,20 +1,14 @@
-"""QBF Support Bot."""
+"""Bot runs here."""
 
-import sys
-import os
 import logging
 
 from telegram import Bot
-from telegram.error import TelegramError, BadRequest
+from telegram.error import BadRequest
 from telegram.ext import (
-	Updater, Filters, CommandHandler, MessageHandler, CallbackQueryHandler)
+	CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater)
 from telegram.utils.request import Request
 
-from excel import parse_document, ParseError
-from contact import contact_form
-
-
-FILENAME = 'menu.xlsx'
+from bot.contact import contact_form
 
 
 class SafeRequestsBot(Bot):
@@ -89,42 +83,8 @@ def error(update, context):
 	answer(update, context, 'main')
 
 
-def main():
-	logging.basicConfig(
-		level=logging.INFO,
-		format="%(asctime)s - %(levelname)s - %(module)s - %(message)s",
-		handlers=[
-			logging.FileHandler('bot.log', 'a', 'utf-8'),
-			logging.StreamHandler()
-		],
-		force=True
-	)
-
-	try:
-		token = os.environ['TOKEN']
-	except KeyError:
-		logging.critical("Токен бота ('TOKEN') не найден в переменных окружения!")
-		sys.exit(1)
-
-	try:
-		admin = os.environ['ADMIN']
-	except KeyError:
-		logging.critical("Ник админа ('ADMIN') не найден в переменных окружения!")
-		sys.exit(1)
-
-	try:
-		menu = parse_document(FILENAME)
-	except ParseError as err:
-		logging.critical("Ошибка парсинга файла - %s", err)
-		sys.exit(1)
-
-	try:
-		updater = Updater(bot=SafeRequestsBot(token))
-	except TelegramError as err:
-		logging.critical("Ошибка подключения к телеграму - %s", err)
-		sys.exit(1)
-
-	logging.info("Бот запущен!")
+def run(token, admin, menu):
+	updater = Updater(bot=SafeRequestsBot(token))
 
 	updater.dispatcher.bot_data['admin'] = admin
 	updater.dispatcher.bot_data['menu'] = menu
@@ -138,10 +98,6 @@ def main():
 	updater.dispatcher.add_error_handler(error)
 
 	updater.start_polling()
+	logging.info("Бот запущен!")
 	updater.idle()
-
 	logging.info("Бот выключен.")
-
-
-if __name__ == "__main__":
-	main()
