@@ -9,6 +9,7 @@ from telegram.ext import (
 from telegram.utils.request import Request
 
 from bot.contact import contact_form
+from bot.admin import admin_form
 
 
 class SafeRequestsBot(Bot):
@@ -93,6 +94,7 @@ def run(token, admin, menu):
 	updater.dispatcher.bot_data['menu'] = menu
 
 	updater.dispatcher.add_handler(CommandHandler('start', start))
+	updater.dispatcher.add_handler(admin_form)
 	updater.dispatcher.add_handler(contact_form)
 	updater.dispatcher.add_handler(MessageHandler(Filters.all, clean))
 	updater.dispatcher.add_handler(CallbackQueryHandler(back, pattern=r'^back$'))
