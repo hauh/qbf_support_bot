@@ -2,8 +2,7 @@
 
 from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
-
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 BACK_BTN = "Назад"
 CONTACT_BTN = "Указать контакты"
@@ -49,7 +48,7 @@ def parse_document(file):
 
 	table = document.active
 	try:
-		menu = {'start': table[2][0].value}
+		menu = {'start': {'message': table[2][0].value, 'buttons': None}}
 	except IndexError as err:
 		raise ParseError("Пустой файл.") from err
 

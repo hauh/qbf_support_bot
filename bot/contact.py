@@ -1,12 +1,13 @@
-"""Contact customer form."""
+"""Form to request a call back."""
 
 import logging
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import TelegramError
 from telegram.ext import CallbackQueryHandler, Filters, MessageHandler
+from telegram.ext.conversationhandler import ConversationHandler
 
-from bot.form import form_action, form_conversation
+from bot.menu import back, reply
 
 messages = {
 	'name': (
@@ -40,24 +41,24 @@ buttons = {
 }
 
 
-@form_action
-def ask_name(_update, _context):
-	return 1, messages['name'], buttons['back']
+def ask_name(update, context):
+	reply(update, context, messages['name'], buttons['back'])
+	return 1
 
 
-@form_action
 def ask_phone(update, context):
 	context.user_data['name'] = update.effective_message.text
-	return 2, messages['phone'], buttons['back']
+	reply(update, context, messages['phone'], buttons['back'])
+	return 2
 
 
-@form_action
 def ask_confirm(update, context):
 	context.user_data['phone'] = update.effective_message.text
-	return 3, messages['confirm'].format(**context.user_data), buttons['confirm']
+	confirm_message = messages['confirm'].format(**context.user_data)
+	reply(update, context, confirm_message, buttons['confirm'])
+	return 3
 
 
-@form_action
 def done(update, context):
 	try:
 		context.bot.send_message(
@@ -68,22 +69,23 @@ def done(update, context):
 				name=context.user_data['name'],
 				phone=context.user_data['phone'],
 			),
-			parse_mode=ParseMode.MARKDOWN
+			disable_notification=False
 		)
 	except TelegramError as err:
 		logging.error("Ошибка пересылки заявки - %s", err)
 		update.callback_query.answer(messages['fail'], show_alert=True)
 	else:
 		update.callback_query.answer(messages['success'], show_alert=True)
-	return_menu = context.bot_data['menu']['main']
-	return -1, return_menu['message'], return_menu['buttons']
+	return back(update, context)
 
 
-contact_form = form_conversation(
+contact_form = ConversationHandler(
 	entry_points=[CallbackQueryHandler(ask_name, pattern=r'^contact$')],
 	states={
 		1: [MessageHandler(Filters.text, ask_phone)],
 		2: [MessageHandler(Filters.text, ask_confirm)],
 		3: [CallbackQueryHandler(done, pattern=r'^confirm$')],
-	}
+	},
+	fallbacks=[CallbackQueryHandler(back, pattern=r'^back$')],
+	allow_reentry=True
 )

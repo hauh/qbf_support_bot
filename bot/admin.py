@@ -1,14 +1,15 @@
-"""New menu upload for admin."""
+"""Form for admin to upload a new version of menu."""
 
 import logging
 import os
 
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CommandHandler, Filters, MessageHandler
-
+from telegram.ext import (
+	CallbackQueryHandler, CommandHandler,
+	ConversationHandler, Filters, MessageHandler
+)
 from bot.excel import ParseError, parse_document
-from bot.form import form_action, form_conversation
-
+from bot.menu import back, reply
 
 messages = {
 	'admin': "Загрузите xlsx-файл с новым меню.",
@@ -20,22 +21,22 @@ back_btn = InlineKeyboardMarkup([
 ])
 
 
-@form_action
 def admin(update, context):
 	if update.effective_user.id != context.bot_data['admin']:
-		return_menu = context.bot_data['menu']['main']
-		return -1, return_menu['message'], return_menu['buttons']
-	return 1, messages['admin'], back_btn
+		update.effective_message.delete()
+		return -1
+	reply(update, context, messages['admin'], back_btn)
+	return 1
 
 
-@form_action
 def get_file(update, context):
 	update.effective_chat.send_action(ChatAction.TYPING)
 	file = update.effective_message.document.get_file()
 	try:
 		menu = parse_document(file.download())
 	except ParseError as err:
-		return 1, messages['fail'] + "\n" + str(err), back_btn
+		reply(update, context, messages['fail'] + "\n" + str(err), back_btn)
+		return 1
 	try:
 		os.remove('menu.xlsx')
 	except OSError:
@@ -44,12 +45,14 @@ def get_file(update, context):
 	context.bot_data['menu'] = menu
 	logging.info("Меню обновлено.")
 	update.effective_message.reply_text(messages['success'], quote=True)
-	return -1, menu['main']['message'], menu['main']['buttons']
+	return back(update, context)
 
 
-admin_form = form_conversation(
+admin_form = ConversationHandler(
 	entry_points=[CommandHandler('admin', admin)],
 	states={
 		1: [MessageHandler(Filters.document, get_file)],
 	},
+	fallbacks=[CallbackQueryHandler(back, pattern=r'^back$')],
+	allow_reentry=True
 )
