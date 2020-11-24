@@ -9,9 +9,6 @@ from telegram.error import TelegramError
 from bot.excel import ParseError, parse_document
 from bot.run import run
 
-
-FILENAME = 'menu.xlsx'
-
 if __name__ == "__main__":
 
 	logging.basicConfig(
@@ -26,13 +23,16 @@ if __name__ == "__main__":
 		sys.exit(1)
 
 	try:
-		admin = os.environ['ADMIN']
+		admin = int(os.environ['ADMIN'])
 	except KeyError:
-		logging.critical("Ник админа ('ADMIN') не найден в переменных окружения!")
+		logging.critical("ID админа ('ADMIN') не найден в переменных окружения!")
+		sys.exit(1)
+	except ValueError:
+		logging.critical("ID админа должен быть числом!")
 		sys.exit(1)
 
 	try:
-		menu = parse_document(FILENAME)
+		menu = parse_document('menu.xlsx')
 	except ParseError as err:
 		logging.critical("Ошибка парсинга файла - %s", err)
 		sys.exit(1)

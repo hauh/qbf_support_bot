@@ -2,20 +2,19 @@
 
 import logging
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.error import TelegramError
 from telegram.ext import CallbackQueryHandler, Filters, MessageHandler
 
 from bot.form import form_action, form_conversation
 
-
 messages = {
 	'name': (
-		"Напишите, пожалуйста, как к Вам обращаться "
+		"Напишите, пожалуйста, *как к Вам обращаться* "
 		"(в строке соообщения) и нажмите кнопку \"Отправить\"."
 	),
 	'phone': (
-		"Введите, пожалуйста, Ваш контакный номер телефона "
+		"Введите, пожалуйста, Ваш *контакный номер телефона* "
 		"(в строке соообщения) и нажмите кнопку \"Отправить\"."
 	),
 	'confirm': "{name}\n{phone}\n\nПодтвердить?",
@@ -58,6 +57,7 @@ def ask_confirm(update, context):
 	return 3, messages['confirm'].format(**context.user_data), buttons['confirm']
 
 
+@form_action
 def done(update, context):
 	try:
 		context.bot.send_message(
@@ -68,14 +68,15 @@ def done(update, context):
 				name=context.user_data['name'],
 				phone=context.user_data['phone'],
 			),
-			parse_mode='Markdown'
+			parse_mode=ParseMode.MARKDOWN
 		)
 	except TelegramError as err:
 		logging.error("Ошибка пересылки заявки - %s", err)
 		update.callback_query.answer(messages['fail'], show_alert=True)
 	else:
 		update.callback_query.answer(messages['success'], show_alert=True)
-	return -1, context.bot_data['menu']['message'], context.bot_data['menu']['buttons']
+	return_menu = context.bot_data['menu']['main']
+	return -1, return_menu['message'], return_menu['buttons']
 
 
 contact_form = form_conversation(

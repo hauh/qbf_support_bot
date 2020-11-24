@@ -2,7 +2,7 @@
 
 import logging
 
-from telegram import Bot
+from telegram import Bot, ParseMode
 from telegram.error import BadRequest
 from telegram.ext import (
 	CallbackQueryHandler, CommandHandler, Filters, MessageHandler, Updater)
@@ -44,7 +44,7 @@ def answer(update, context, menu_id):
 		message_kwargs = {
 			'text': next_menu['message'],
 			'reply_markup': next_menu['buttons'],
-			'parse_mode': 'Markdown'
+			'parse_mode': ParseMode.MARKDOWN
 		}
 		if message := context.user_data.pop('last_message', None):
 			message.edit_text(**message_kwargs)

@@ -1,7 +1,8 @@
-"""Conversation form."""
+"""Base conversation form."""
 
 from functools import partial
-from telegram.ext import ConversationHandler
+
+from telegram.ext import CallbackQueryHandler, ConversationHandler
 
 
 def form_action(callback):
@@ -10,8 +11,8 @@ def form_action(callback):
 			update.callback_query.answer()
 		if last_message := context.user_data.pop('last_message', None):
 			last_message.delete()
-		next_step, text, buttons = callback(update, context)
-		msg = update.effective_chat.send_message(text=text, reply_markup=buttons)
+		next_step, text, btn = callback(update, context)
+		msg = update.effective_message.reply_markdown(text=text, reply_markup=btn)
 		context.user_data['last_message'] = msg
 		return next_step
 	return next_action
