@@ -5,5 +5,7 @@ services:
     container_name: 'qbf_support_bot'
     build: .
     image: 'bots/qbf_support'
-    env_file: '.env'
+    volumes:
+      - ./menu.xlsx:/opt/qbf_support_bot/menu.xlsx
+    env_file: 'env'
     restart: always
