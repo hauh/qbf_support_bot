@@ -39,11 +39,11 @@ class Button():
 		return [InlineKeyboardButton(self.text, callback_data=self.id)]
 
 
-def parse_document(filename):
+def parse_document(file):
 	try:
-		document = load_workbook(filename=filename)
-	except FileNotFoundError as err:
-		raise ParseError("Файл не найден.") from err
+		document = load_workbook(file)
+	except OSError as err:
+		raise ParseError("Ошибка чтения файла.") from err
 	except InvalidFileException as err:
 		raise ParseError("Невалидный файл.") from err
 
@@ -53,28 +53,46 @@ def parse_document(filename):
 	except IndexError as err:
 		raise ParseError("Пустой файл.") from err
 
-	def build_menu(button, col, row):
+	def build_menu(button, col, max_row):
+		try:
+			column = next(table.iter_cols(
+				min_col=col, min_row=button.row, max_row=max_row))
+		except StopIteration:
+			return
+
+		if not column[0].value:
+			return
+
+		if button.id in menu:
+			raise ParseError(f"Дублирующееся меню {button.text}.")
+
 		submenu = menu.setdefault(button.id, {'back': button.back})
 		next_buttons = []
-		column = next(table.iter_cols(min_col=col, min_row=button.row, max_row=row))
-		for cell in column:
+		if next_button := Button.from_cell(column[0], button.id):
+			next_buttons.append(next_button)
+			submenu['message'] = button.text
+		else:
+			submenu['message'] = column[0].value
+
+		for cell in column[1:]:
 			if cell.value:
 				if next_button := Button.from_cell(cell, button.id):
 					next_buttons.append(next_button)
-				elif 'message' not in submenu:
-					submenu['message'] = cell.value
 				else:
-					raise ParseError("Ошибка в ячейке " + cell.coordinate)
+					raise ParseError(f"Ошибка в ячейке {cell.coordinate}.")
 
-		if next_buttons and col != table.max_column:
-			for i in range(len(next_buttons) - 1):
-				build_menu(next_buttons[i], col + 1, next_buttons[i + 1].row - 1)
-			build_menu(next_buttons[-1], col + 1, row)
+		if not next_buttons:
+			if column[0].value:
+				raise ParseError(f"У подменю {button.text} нет кнопок!")
+			return
 
-		if not submenu.get('buttons'):
-			submenu['buttons'] = InlineKeyboardMarkup(
-				[button.to_telegram() for button in next_buttons])
-		submenu.setdefault('message', button.text)
+		telegram_buttons = []
+		for first_button, second_button in zip(next_buttons, next_buttons[1:]):
+			build_menu(first_button, col + 1, second_button.row - 1)
+			telegram_buttons.append(first_button.to_telegram())
+		build_menu(next_buttons[-1], col + 1, max_row)
+		telegram_buttons.append(next_buttons[-1].to_telegram())
+		submenu['buttons'] = InlineKeyboardMarkup(telegram_buttons)
 
 	build_menu(Button(3, None, 'main'), table.min_column, table.max_row)
 	document.close()
