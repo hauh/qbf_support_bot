@@ -51,7 +51,7 @@ def main():
 		menu_tree = parse_document('menu.xlsx')
 	except ParseError as err:
 		logging.error("Ошибка парсинга файла - %s", err)
-		menu_tree = {'main': {'message': "Ошибка загрузки меню.", 'buttons': None}}
+		sys.exit(1)
 
 	dispatcher = updater.dispatcher
 	dispatcher.bot_data['admin'] = admin

@@ -28,11 +28,12 @@ def start(update, context):
 
 
 def back(update, context):
-	current_menu_id = context.user_data.pop('current_menu')
-	current_menu = context.bot_data['menu'].get(current_menu_id)
-	previous_menu = context.bot_data['menu'].get(current_menu['back'])
-	context.user_data['current_menu'] = current_menu['back']
-	previous_menu = context.bot_data['menu']['main']
+	if current_menu_id := context.user_data.pop('current_menu', None):
+		current_menu = context.bot_data['menu'].get(current_menu_id)
+		previous_menu = context.bot_data['menu'].get(current_menu['back'])
+		context.user_data['current_menu'] = current_menu['back']
+	else:
+		previous_menu = context.bot_data['menu']['main']
 	reply(update, context, previous_menu['message'], previous_menu['buttons'])
 	return -1
 
