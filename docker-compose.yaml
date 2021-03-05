@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   bot:
@@ -7,5 +7,5 @@ services:
     image: 'bots/qbf_support'
     volumes:
       - ./menu.xlsx:/opt/qbf_support_bot/menu.xlsx
-    env_file: 'env'
+    env_file: '.env'
     restart: always
